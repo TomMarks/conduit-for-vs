@@ -20,11 +20,20 @@
     <ProjectReference Include="..\ClaudeCode.Core\ClaudeCode.Core.csproj" />
   </ItemGroup>
 
-  <!--
-    Remote UI XAML files are auto-discovered by the build targets when they sit
-    next to a same-named .cs file inheriting from RemoteUserControl. No extra
-    <Page> or <EmbeddedResource> entry is needed in current SDK versions.
-    See: https://learn.microsoft.com/en-us/visualstudio/extensibility/visualstudio.extensibility/inside-the-sdk/remote-ui
-  -->
+  <ItemGroup>
+    <!-- Must be Content so VS deploys it alongside the assembly for %placeholder% resolution. -->
+    <Content Include="string-resources.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      UseWPF=true causes all .xaml files to default to <Page> (compiled to BAML).
+      Remote UI requires the raw XAML as an embedded resource — not BAML — so we
+      must explicitly remove it from Page processing and re-add it as EmbeddedResource.
+      See: https://learn.microsoft.com/en-us/visualstudio/extensibility/visualstudio.extensibility/inside-the-sdk/remote-ui
+    -->
+    <Page Remove="ToolWindows\ConduitToolWindowContent.xaml" />
+    <EmbeddedResource Include="ToolWindows\ConduitToolWindowContent.xaml" />
+  </ItemGroup>
 
 </Project>
