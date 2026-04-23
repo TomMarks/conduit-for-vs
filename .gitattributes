@@ -1,0 +1,19 @@
+* text=auto eol=crlf
+
+*.sh text eol=lf
+*.ps1 text eol=crlf
+
+*.cs text diff=csharp
+*.csproj text
+*.props text
+*.targets text
+*.xaml text
+*.json text
+*.md text
+
+# Treat as binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.vsix binary
+*.snk binary

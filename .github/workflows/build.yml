@@ -1,0 +1,52 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-2022   # VS Build Tools / MSBuild for VSIX packaging
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Conduit.slnx
+
+      - name: Build
+        run: dotnet build Conduit.slnx --configuration Release --no-restore -bl:build.binlog
+
+      - name: Test
+        run: dotnet test Conduit.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+        continue-on-error: true   # No tests yet in Phase 0; remove this line when tests exist.
+
+      - name: Upload VSIX
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conduit-vsix
+          path: src/ClaudeCode.Extension/bin/Release/**/*.vsix
+          if-no-files-found: warn
+
+      - name: Upload binlog on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msbuild-binlog
+          path: build.binlog

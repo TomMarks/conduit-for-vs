@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Pure domain library — no Windows surface needed.
+      Stays on net8.0 (no -windows suffix) so it could be referenced by a future test host or CLI.
+    -->
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Conduit.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>
