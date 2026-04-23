@@ -34,7 +34,7 @@ internal sealed class OpenConduitCommand : Command
         Icon = new(ImageMoniker.KnownValues.OfficeWebExtension, IconSettings.IconAndText),
         Shortcuts =
         [
-            new CommandShortcutConfiguration(ModifierKey.ControlAlt, Key.C, ModifierKey.ControlAlt, Key.C),
+            new CommandShortcutConfiguration(ModifierKey.Control | ModifierKey.LeftAlt, Key.C, ModifierKey.Control | ModifierKey.LeftAlt, Key.C),
         ],
     };
 

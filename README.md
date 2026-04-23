@@ -21,7 +21,7 @@ Conduit/
 ├── NuGet.config
 │
 ├── src/
-│   ├── ClaudeCode.Extension/                     ← VSIX entry, tool window, commands
+│   ├── ClaudeCode.VSExtension/                     ← VSIX entry, tool window, commands
 │   │   ├── ConduitExtension.cs                   ← Extension metadata + DI composition
 │   │   ├── Commands/OpenConduitCommand.cs        ← View → Other Windows → Conduit
 │   │   ├── ToolWindows/
@@ -46,7 +46,7 @@ Conduit/
 └── .github/workflows/build.yml                   ← CI
 ```
 
-Projects from the architecture diagram that aren't yet present (`ClaudeCode.Cli`, `ClaudeCode.Editor`, `ClaudeCode.Mcp`, `ClaudeCode.Extension.UI`, `ClaudeCode.Extension.Webview`, `ClaudeCode.VsBridge`) are added in their respective phases — see `docs/PROJECT_PLAN.md`.
+Projects from the architecture diagram that aren't yet present (`ClaudeCode.Cli`, `ClaudeCode.Editor`, `ClaudeCode.Mcp`, `ClaudeCode.VSExtension.UI`, `ClaudeCode.VSExtension.Webview`, `ClaudeCode.VsBridge`) are added in their respective phases — see `docs/PROJECT_PLAN.md`.
 
 ---
 
@@ -89,7 +89,7 @@ Projects from the architecture diagram that aren't yet present (`ClaudeCode.Cli`
    File → Open → Project/Solution → Conduit.slnx
    ```
 
-5. **Set `ClaudeCode.Extension` as the startup project**, then `F5`.
+5. **Set `ClaudeCode.VSExtension` as the startup project**, then `F5`.
    The Experimental Instance launches with Conduit hot-loaded.
 
 6. **Open the tool window**.

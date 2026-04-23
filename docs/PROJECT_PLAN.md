@@ -83,9 +83,9 @@ Build an out-of-process VS2026 extension that wraps the Claude Code CLI as a sub
 ```
 ClaudeCode.VS2026.slnx
 ├── src/
-│   ├── ClaudeCode.Extension/                  (VSIX entry point — VisualStudio.Extensibility OOP)
-│   ├── ClaudeCode.Extension.UI/               (Remote UI controls + WebView2 host XAML)
-│   ├── ClaudeCode.Extension.Webview/          (TS/HTML/CSS chat surface, built into a single bundle)
+│   ├── ClaudeCode.VSExtension/                  (VSIX entry point — VisualStudio.Extensibility OOP)
+│   ├── ClaudeCode.VSExtension.UI/               (Remote UI controls + WebView2 host XAML)
+│   ├── ClaudeCode.VSExtension.Webview/          (TS/HTML/CSS chat surface, built into a single bundle)
 │   ├── ClaudeCode.Core/                       (domain: sessions, messages, plans, tool calls)
 │   ├── ClaudeCode.Cli/                        (Claude CLI process host + NDJSON parser)
 │   ├── ClaudeCode.Mcp/                        (MCP config read/write — defers to ~/.claude/settings.json)
@@ -94,7 +94,7 @@ ClaudeCode.VS2026.slnx
 ├── tests/
 │   ├── ClaudeCode.Core.Tests/                 (xUnit; pure unit)
 │   ├── ClaudeCode.Cli.Tests/                  (NDJSON fixtures + golden files)
-│   └── ClaudeCode.Extension.IntegrationTests/ (runs against Experimental Instance)
+│   └── ClaudeCode.VSExtension.IntegrationTests/ (runs against Experimental Instance)
 ├── docs/                                      (see §1.3)
 ├── tools/                                     (refresh-context.ps1, build helpers)
 └── samples/                                   (manual-test workspaces)
@@ -105,12 +105,12 @@ ClaudeCode.VS2026.slnx
 ```mermaid
 flowchart LR
     subgraph entry [VSIX Entry]
-        EXT[ClaudeCode.Extension<br/>net8.0-windows<br/>VisualStudio.Extensibility]
+        EXT[ClaudeCode.VSExtension<br/>net8.0-windows<br/>VisualStudio.Extensibility]
     end
 
     subgraph ui [UI Layer]
-        UIPROJ[ClaudeCode.Extension.UI<br/>Remote UI XAML + WebView2 host]
-        WEB[ClaudeCode.Extension.Webview<br/>HTML/TS/CSS bundle]
+        UIPROJ[ClaudeCode.VSExtension.UI<br/>Remote UI XAML + WebView2 host]
+        WEB[ClaudeCode.VSExtension.Webview<br/>HTML/TS/CSS bundle]
     end
 
     subgraph domain [Domain & Integration]
@@ -154,7 +154,7 @@ flowchart TB
     end
 
     subgraph exthost [Extension Service Hub host — separate .NET 8 process]
-        EXT2[ClaudeCode.Extension]
+        EXT2[ClaudeCode.VSExtension]
         VM[ViewModels<br/>ChatVM, SessionsVM, PlanVM]
         ORCH[Session Orchestrator]
         CLIH[CLI Host]
@@ -190,7 +190,7 @@ flowchart TB
 
 | Component | Responsibility | Notes |
 |---|---|---|
-| `ClaudeCode.Extension` | DI composition root, registers commands, tool window, contributions | One `Extension` class with `[VisualStudioContribution]` attributes |
+| `ClaudeCode.VSExtension` | DI composition root, registers commands, tool window, contributions | One `Extension` class with `[VisualStudioContribution]` attributes |
 | `Session Orchestrator` | Owns N concurrent `ClaudeSession` instances; routes events to UI | One CLI process per session; preserve `session_id` on resume |
 | `CLI Host` | Spawn `claude`, write input frames, parse `stream-json` line-by-line | Use `System.IO.Pipelines` for backpressure; `System.Text.Json` source generators for hot path |
 | `Chat ViewModel` | Streamed message blocks → observable collection bound to webview via `postMessage` | `CommunityToolkit.Mvvm` source generators |
@@ -355,7 +355,7 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
 
 - Open `ClaudeCode.VS2026.slnx` in VS2026.
 - `F5` launches Experimental Instance with the extension loaded (hot-load — no restart on rebuild for OOP).
-- Webview asset rebuild: `npm run dev` in `src/ClaudeCode.Extension.Webview` runs Vite in watch mode; the host picks up via `SetVirtualHostNameToFolderMapping`.
+- Webview asset rebuild: `npm run dev` in `src/ClaudeCode.VSExtension.Webview` runs Vite in watch mode; the host picks up via `SetVirtualHostNameToFolderMapping`.
 - Tests: `dotnet test` for unit; integration tests use the VS2026 ExperimentalInstance harness.
 
 ## Appendix B — Open questions to close in Phase 0

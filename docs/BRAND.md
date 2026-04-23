@@ -1,6 +1,6 @@
 # BRAND.md — Conduit design tokens
 
-> Single source of truth. The webview (`src/ClaudeCode.Extension.Webview`) generates its CSS variables from this file. The Remote UI XAML (`src/ClaudeCode.Extension.UI`) generates its `SolidColorBrush` resources from this file. Do not redefine colors anywhere else.
+> Single source of truth. The webview (`src/ClaudeCode.VSExtension.Webview`) generates its CSS variables from this file. The Remote UI XAML (`src/ClaudeCode.VSExtension.UI`) generates its `SolidColorBrush` resources from this file. Do not redefine colors anywhere else.
 
 ## Identity
 
@@ -107,7 +107,7 @@ The user has VS theme switching. Conduit ships **dark-only at v1** (deliberate s
 
 Two generators consume this file at build time (Phase 1 deliverable):
 
-1. `tools/generate-webview-tokens.ts` → `src/ClaudeCode.Extension.Webview/src/tokens.css`
-2. `tools/generate-xaml-tokens.ps1` → `src/ClaudeCode.Extension.UI/Themes/ConduitBrushes.xaml`
+1. `tools/generate-webview-tokens.ts` → `src/ClaudeCode.VSExtension.Webview/src/tokens.css`
+2. `tools/generate-xaml-tokens.ps1` → `src/ClaudeCode.VSExtension.UI/Themes/ConduitBrushes.xaml`
 
 If you change a token, **change it here**, then `dotnet build` regenerates both. There is no other place to edit a color.

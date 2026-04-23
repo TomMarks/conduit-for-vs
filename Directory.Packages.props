@@ -13,8 +13,8 @@
       Latest production line at time of scaffold: 17.14.x (VS2026 Dec 2025+).
       Do not float; pin and bump deliberately.
     -->
-    <PackageVersion Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.40404" />
-    <PackageVersion Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.40404" />
+    <PackageVersion Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.40608" />
+    <PackageVersion Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.40608" />
   </ItemGroup>
 
   <ItemGroup>
