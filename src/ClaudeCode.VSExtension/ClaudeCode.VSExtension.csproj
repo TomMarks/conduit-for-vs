@@ -21,9 +21,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Must be Content so VS deploys it alongside the assembly for %placeholder% resolution. -->
-    <Content Include="string-resources.json" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      VSIXSubPath=".vsextension" places the file alongside extension.json in the VSIX, which
+      is where VS looks when resolving %placeholder% strings at runtime.
+      CopyToOutputDirectory=Never avoids a duplicate root copy; the target below handles the
+      output-directory copy needed for F5 (direct-from-output) debugging.
+    -->
+    <Content Include="string-resources.json" CopyToOutputDirectory="Never">
+      <VSIXSubPath>.vsextension</VSIXSubPath>
+    </Content>
   </ItemGroup>
+
+  <Target Name="CopyStringResourcesToVsextension" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\string-resources.json"
+          DestinationFolder="$(OutDir).vsextension\" />
+  </Target>
 
   <ItemGroup>
     <!--
