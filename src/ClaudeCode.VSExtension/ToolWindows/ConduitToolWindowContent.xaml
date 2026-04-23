@@ -1,32 +1,21 @@
 <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-              xmlns:vm="clr-namespace:Conduit.ToolWindows"
-              xmlns:styles="http://schemas.microsoft.com/visualstudio/extensibility/2022/xaml/styles"
-              xmlns:colors="http://schemas.microsoft.com/visualstudio/extensibility/2022/xaml/colors">
+              xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
 
   <!--
-    Phase 0 placeholder. Phase 1 replaces this with a single Border hosting WebView2.
-    Colors are inlined here ONLY for Phase 0; Phase 1 introduces ConduitBrushes.xaml
-    generated from BRAND.md by tools/generate-xaml-tokens.ps1.
+    SPIKE-001: WebView2 inside a Remote UI tool window.
+
+    Remote UI XAML runs in devenv.exe, so it can reference any assembly that devenv loads.
+    VS 2026 loads Microsoft.Web.WebView2.Wpf.dll for Copilot; we piggyback on that.
+
+    Source is a string→Uri binding — WPF's UriTypeConverter handles the conversion.
+    The value is "about:blank" until ControlLoadedAsync starts the WebSocket bridge
+    and pushes the real URL via INotifyPropertyChanged.
+
+    Two-way comms go through ConduitWebSocketBridge (ws://localhost:<port>/ws) because
+    Remote UI has no code-behind and CoreWebView2.WebMessageReceived is unreachable.
   -->
 
-  <Border Background="#0E1116" Padding="16">
-    <StackPanel VerticalAlignment="Top">
-
-      <!-- Brand mark — signal waveform from BRAND.md icon B -->
-      <Canvas Width="48" Height="48" Margin="0,0,0,12" HorizontalAlignment="Left">
-        <Path Stroke="#2DD4BF" StrokeThickness="2.5"
-              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-              Data="M 10,24 L 18,24 L 22,16 L 26,32 L 30,24 L 38,24" />
-        <Ellipse Canvas.Left="35.5" Canvas.Top="21.5" Width="5" Height="5" Fill="#FB7185" />
-      </Canvas>
-
-      <TextBlock Text="Conduit" Foreground="#E6EDF3" FontSize="22" FontWeight="Medium" Margin="0,0,0,4" />
-      <TextBlock Text="{Binding Tagline}" Foreground="#8B949E" FontSize="13" Margin="0,0,0,16" />
-      <TextBlock Text="{Binding Greeting}" Foreground="#E6EDF3" FontSize="14" Margin="0,0,0,8" />
-      <TextBlock Text="{Binding PhaseLabel}" Foreground="#6E7681" FontSize="12" />
-
-    </StackPanel>
-  </Border>
+  <wv2:WebView2 Source="{Binding WebViewSource}" />
 
 </DataTemplate>

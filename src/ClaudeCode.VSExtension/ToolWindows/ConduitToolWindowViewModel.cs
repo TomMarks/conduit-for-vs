@@ -1,19 +1,27 @@
 using System.Runtime.Serialization;
+using Microsoft.VisualStudio.Extensibility.UI;
 
 namespace Conduit.ToolWindows;
 
 /// <summary>
-/// Phase 0 view model. Remote UI requires <see cref="DataContractAttribute"/>.
+/// Phase 1 / Spike-001 view model.
+/// Exposes <see cref="WebViewSource"/> so Remote UI can bind it to the WebView2.Source
+/// property via standard WPF TypeConverter (string → Uri).
 /// </summary>
 [DataContract]
-internal sealed class ConduitToolWindowViewModel
+internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
 {
-    [DataMember]
-    public string Tagline { get; init; } = "Agentic coding inside Visual Studio";
+    private string webViewSource = "about:blank";
 
+    /// <summary>
+    /// URL navigated by the WebView2 control.  Starts as about:blank and is updated to
+    /// the bridge's HTTP origin once <see cref="ConduitToolWindowContent.ControlLoadedAsync"/>
+    /// starts the <see cref="Conduit.Bridge.ConduitWebSocketBridge"/>.
+    /// </summary>
     [DataMember]
-    public string Greeting { get; init; } = "Hello from Conduit.";
-
-    [DataMember]
-    public string PhaseLabel { get; init; } = "Phase 0 · scaffold smoke test";
+    public string WebViewSource
+    {
+        get => webViewSource;
+        set => SetProperty(ref webViewSource, value);
+    }
 }
