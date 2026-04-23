@@ -21,7 +21,7 @@ internal sealed class ConduitToolWindowContent : RemoteUserControl
     private ConduitToolWindowContent(ConduitToolWindowViewModel vm)
         : base(dataContext: vm)
     {
-        viewModel = vm;
+        this.viewModel = vm;
     }
 
     public ConduitToolWindowContent()
@@ -34,12 +34,12 @@ internal sealed class ConduitToolWindowContent : RemoteUserControl
     {
         await base.ControlLoadedAsync(cancellationToken);
 
-        bridge = new ConduitWebSocketBridge();
-        bridge.Start();
+        this.bridge = new ConduitWebSocketBridge();
+        this.bridge.Start();
 
         // Update the binding; devenv proxy picks up the INotifyPropertyChanged notification
         // and the WebView2 navigates to the chat page.
-        viewModel.WebViewSource = bridge.SourceUrl;
+        this.viewModel.WebViewSource = this.bridge.SourceUrl;
     }
 
     /// <inheritdoc />
@@ -47,8 +47,8 @@ internal sealed class ConduitToolWindowContent : RemoteUserControl
     {
         if (disposing)
         {
-            bridge?.Dispose();
-            bridge = null;
+            this.bridge?.Dispose();
+            this.bridge = null;
         }
 
         base.Dispose(disposing);

@@ -81,22 +81,22 @@ internal sealed class ConduitWebSocketBridge : IDisposable
     public int Port { get; }
 
     /// <summary>URL to navigate WebView2 to — includes host:port so the JS can derive the WS endpoint.</summary>
-    public string SourceUrl => $"http://localhost:{Port}/";
+    public string SourceUrl => $"http://localhost:{this.Port}/";
 
     /// <summary>Fires on the thread-pool for each text frame received from any connected WebSocket client.</summary>
     public event Action<string>? MessageReceived;
 
     public ConduitWebSocketBridge()
     {
-        Port = FindFreePort();
-        listener = new HttpListener();
-        listener.Prefixes.Add($"http://localhost:{Port}/");
+        this.Port = FindFreePort();
+        this.listener = new HttpListener();
+        this.listener.Prefixes.Add($"http://localhost:{this.Port}/");
     }
 
     public void Start()
     {
-        listener.Start();
-        _ = Task.Run(() => AcceptLoopAsync(cts.Token));
+        this.listener.Start();
+        _ = Task.Run(() => this.AcceptLoopAsync(this.cts.Token));
     }
 
     public async Task BroadcastAsync(string json, CancellationToken ct = default)
@@ -105,12 +105,17 @@ internal sealed class ConduitWebSocketBridge : IDisposable
         var segment = new ArraySegment<byte>(bytes);
 
         List<WebSocket> snapshot;
-        lock (connectionsLock) { snapshot = new List<WebSocket>(connections); }
+        lock (this.connectionsLock)
+        {
+            snapshot = new List<WebSocket>(this.connections);
+        }
 
         foreach (var ws in snapshot)
         {
             if (ws.State == WebSocketState.Open)
+            {
                 await ws.SendAsync(segment, WebSocketMessageType.Text, endOfMessage: true, ct);
+            }
         }
     }
 
@@ -119,11 +124,20 @@ internal sealed class ConduitWebSocketBridge : IDisposable
         while (!ct.IsCancellationRequested)
         {
             HttpListenerContext ctx;
-            try { ctx = await listener.GetContextAsync(); }
-            catch when (ct.IsCancellationRequested) { break; }
-            catch { break; }
+            try
+            {
+                ctx = await this.listener.GetContextAsync();
+            }
+            catch when (ct.IsCancellationRequested)
+            {
+                break;
+            }
+            catch
+            {
+                break;
+            }
 
-            _ = Task.Run(() => DispatchAsync(ctx, ct), ct);
+            _ = Task.Run(() => this.DispatchAsync(ctx, ct), ct);
         }
     }
 
@@ -132,7 +146,7 @@ internal sealed class ConduitWebSocketBridge : IDisposable
         if (ctx.Request.IsWebSocketRequest)
         {
             var wsCtx = await ctx.AcceptWebSocketAsync(subProtocol: null);
-            await HandleWebSocketAsync(wsCtx.WebSocket, ct);
+            await this.HandleWebSocketAsync(wsCtx.WebSocket, ct);
             return;
         }
 
@@ -141,7 +155,11 @@ internal sealed class ConduitWebSocketBridge : IDisposable
 
     private async Task HandleWebSocketAsync(WebSocket ws, CancellationToken ct)
     {
-        lock (connectionsLock) connections.Add(ws);
+        lock (this.connectionsLock)
+        {
+            this.connections.Add(ws);
+        }
+
         var buffer = new byte[8192];
 
         try
@@ -149,21 +167,32 @@ internal sealed class ConduitWebSocketBridge : IDisposable
             while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
             {
                 var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
-                if (result.MessageType == WebSocketMessageType.Close) break;
-                if (result.MessageType != WebSocketMessageType.Text) continue;
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    break;
+                }
+
+                if (result.MessageType != WebSocketMessageType.Text)
+                {
+                    continue;
+                }
 
                 var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                MessageReceived?.Invoke(json);
+                this.MessageReceived?.Invoke(json);
 
                 // Spike echo: bounce the raw payload back so the exit criterion is
                 // verifiable directly in the webview without a CLI process.
                 var echo = JsonSerializer.Serialize(new { text = $"[echo] {json}" });
-                await BroadcastAsync(echo, ct);
+                await this.BroadcastAsync(echo, ct);
             }
         }
         finally
         {
-            lock (connectionsLock) connections.Remove(ws);
+            lock (this.connectionsLock)
+            {
+                this.connections.Remove(ws);
+            }
+
             ws.Dispose();
         }
     }
@@ -188,14 +217,18 @@ internal sealed class ConduitWebSocketBridge : IDisposable
 
     public void Dispose()
     {
-        cts.Cancel();
-        listener.Stop();
-        listener.Close();
-        cts.Dispose();
-        lock (connectionsLock)
+        this.cts.Cancel();
+        this.listener.Stop();
+        this.listener.Close();
+        this.cts.Dispose();
+        lock (this.connectionsLock)
         {
-            foreach (var ws in connections) ws.Dispose();
-            connections.Clear();
+            foreach (var ws in this.connections)
+            {
+                ws.Dispose();
+            }
+
+            this.connections.Clear();
         }
     }
 }

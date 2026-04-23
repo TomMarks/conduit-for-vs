@@ -21,7 +21,7 @@ internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
     [DataMember]
     public string WebViewSource
     {
-        get => webViewSource;
-        set => SetProperty(ref webViewSource, value);
+        get => this.webViewSource;
+        set => this.SetProperty(ref this.webViewSource, value);
     }
 }
