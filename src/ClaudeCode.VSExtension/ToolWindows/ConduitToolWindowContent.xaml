@@ -1,30 +1,126 @@
 <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-              xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    SPIKE-001: WebView2 inside a Remote UI tool window.
-    See docs/spikes/SPIKE-001-webview2-in-remote-ui.md.
+    Spike-002: WPF chat UI in Remote UI.
+    No WebView2, no bridge — just standard WPF controls bound to ConduitToolWindowViewModel.
+    Phase 1 replaces ExecuteSendAsync stub with real Claude CLI integration.
   -->
 
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />
-
-      <!-- SPIKE-001 DIAGNOSTIC ROW — delete this RowDefinition + the Border below before Phase 1 ships -->
+      <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <wv2:WebView2 Source="{Binding WebViewSource}" Grid.Row="0" />
+    <!-- ── Message list ───────────────────────────────────────────────── -->
+    <ScrollViewer Grid.Row="0"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Messages}" Margin="8,8,8,0">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <!--
+              Each message is a full-width row.  The bubble floats left (assistant) or
+              right (user) via HorizontalAlignment driven by a DataTrigger on IsUser.
+              MaxWidth caps line length so wide windows don't produce unwieldy bubbles.
+            -->
+            <Grid Margin="0,0,0,8">
+              <Border x:Name="Bubble"
+                      HorizontalAlignment="Left"
+                      MaxWidth="520"
+                      Padding="10,7"
+                      CornerRadius="6"
+                      Background="#1c2128"
+                      BorderBrush="#30363d"
+                      BorderThickness="1">
+                <StackPanel>
+                  <TextBlock x:Name="MessageText"
+                             Text="{Binding Text}"
+                             TextWrapping="Wrap"
+                             Foreground="#c9d1d9"
+                             FontSize="13"
+                             LineHeight="19" />
+                  <!-- streaming cursor — hidden once IsStreaming=False -->
+                  <TextBlock x:Name="Cursor"
+                             Text="▌"
+                             Foreground="#58a6ff"
+                             FontSize="13"
+                             Visibility="Collapsed" />
+                </StackPanel>
+              </Border>
+            </Grid>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         SPIKE-001 DIAGNOSTIC BAR — remove this entire Border before Phase 1 ships.
-         Purpose: proves the ViewModel and bridge are wiring up even if WebView2
-         is blank.  If DiagnosticText shows the localhost URL, the bridge is live;
-         paste that URL into a browser to verify the chat page loads.
-         ═══════════════════════════════════════════════════════════════════ -->
-    <Border Grid.Row="1" Background="#161b22" BorderBrush="#30363d" BorderThickness="0,1,0,0" Padding="8,4">
-      <TextBlock Text="{Binding DiagnosticText}" Foreground="#6E7681" FontSize="11" FontFamily="Consolas" />
+            <DataTemplate.Triggers>
+              <!-- User message: right-aligned, distinct background -->
+              <DataTrigger Binding="{Binding IsUser}" Value="True">
+                <Setter TargetName="Bubble" Property="HorizontalAlignment" Value="Right" />
+                <Setter TargetName="Bubble" Property="Background" Value="#0d419d" />
+                <Setter TargetName="Bubble" Property="BorderBrush" Value="#1158c7" />
+                <Setter TargetName="MessageText" Property="Foreground" Value="#e6edf3" />
+              </DataTrigger>
+              <!-- Streaming: show cursor -->
+              <DataTrigger Binding="{Binding IsStreaming}" Value="True">
+                <Setter TargetName="Cursor" Property="Visibility" Value="Visible" />
+              </DataTrigger>
+            </DataTemplate.Triggers>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <!-- ── Status bar ─────────────────────────────────────────────────── -->
+    <Border Grid.Row="1"
+            Background="#161b22"
+            BorderBrush="#30363d"
+            BorderThickness="0,1,0,0"
+            Padding="10,3">
+      <TextBlock Text="{Binding StatusText}"
+                 Foreground="#6e7681"
+                 FontSize="11"
+                 FontFamily="Consolas" />
+    </Border>
+
+    <!-- ── Input bar ──────────────────────────────────────────────────── -->
+    <Border Grid.Row="2"
+            Background="#0d1117"
+            BorderBrush="#30363d"
+            BorderThickness="0,1,0,0"
+            Padding="8">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBox Grid.Column="0"
+                 Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="False"
+                 VerticalContentAlignment="Center"
+                 Padding="8,6"
+                 FontSize="13"
+                 Background="#161b22"
+                 Foreground="#e6edf3"
+                 BorderBrush="#30363d"
+                 CaretBrush="#e6edf3"
+                 Margin="0,0,6,0">
+          <TextBox.InputBindings>
+            <KeyBinding Key="Return" Command="{Binding SendCommand}" />
+          </TextBox.InputBindings>
+        </TextBox>
+
+        <Button Grid.Column="1"
+                Command="{Binding SendCommand}"
+                IsEnabled="{Binding CanSend}"
+                Padding="14,6"
+                FontSize="13"
+                FontWeight="SemiBold"
+                Background="#238636"
+                Foreground="#ffffff"
+                BorderThickness="0"
+                Content="Send" />
+      </Grid>
     </Border>
 
   </Grid>
