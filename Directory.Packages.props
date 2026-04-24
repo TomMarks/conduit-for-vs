@@ -1,0 +1,33 @@
+<Project>
+
+  <!--
+    Centralized Package Management.
+    All package versions live here. Project files reference packages without versions.
+    https://learn.microsoft.com/nuget/consume-packages/Central-Package-Management
+  -->
+
+  <ItemGroup>
+    <!--
+      VisualStudio.Extensibility (out-of-process model).
+      VERIFY VERSION at restore time — these track VS minor releases.
+      Latest production line at time of scaffold: 17.14.x (VS2026 Dec 2025+).
+      Do not float; pin and bump deliberately.
+    -->
+    <PackageVersion Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.40608" />
+    <PackageVersion Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.40608" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- MVVM helpers for view-model code. -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Test stack (test projects only). -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.1" />
+    <PackageVersion Include="FluentAssertions" Version="6.12.2" />
+  </ItemGroup>
+
+</Project>

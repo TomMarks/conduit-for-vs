@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      TFM pinned to net8.0-windows per SPIKE-000-tfm.md.
+      DO NOT change to net10 until VSExtensibility#544 closes.
+    -->
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Conduit</RootNamespace>
+    <AssemblyName>Conduit.VSExtension</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" />
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaudeCode.Core\ClaudeCode.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      VSIXSubPath=".vsextension" places the file alongside extension.json in the VSIX, which
+      is where VS looks when resolving %placeholder% strings at runtime.
+      CopyToOutputDirectory=Never avoids a duplicate root copy; the target below handles the
+      output-directory copy needed for F5 (direct-from-output) debugging.
+    -->
+    <Content Include="string-resources.json" CopyToOutputDirectory="Never">
+      <VSIXSubPath>.vsextension</VSIXSubPath>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="CopyStringResourcesToVsextension" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\string-resources.json"
+          DestinationFolder="$(OutDir).vsextension\" />
+  </Target>
+
+  <ItemGroup>
+    <!--
+      UseWPF=true causes all .xaml files to default to <Page> (compiled to BAML).
+      Remote UI requires the raw XAML as an embedded resource — not BAML — so we
+      must explicitly remove it from Page processing and re-add it as EmbeddedResource.
+      See: https://learn.microsoft.com/en-us/visualstudio/extensibility/visualstudio.extensibility/inside-the-sdk/remote-ui
+    -->
+    <Page Remove="ToolWindows\ConduitToolWindowContent.xaml" />
+    <EmbeddedResource Include="ToolWindows\ConduitToolWindowContent.xaml" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,24 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClaudeCode.Core/ClaudeCode.Core.csproj" />
+    <Project Path="src/ClaudeCode.Cli/ClaudeCode.Cli.csproj" />
+    <Project Path="src/ClaudeCode.VSExtension/ClaudeCode.VSExtension.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClaudeCode.Cli.Tests/ClaudeCode.Cli.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="NuGet.config" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/PROJECT_PLAN.md" />
+    <File Path="docs/BRAND.md" />
+    <File Path="docs/spikes/SPIKE-000-tfm.md" />
+  </Folder>
+</Solution>
