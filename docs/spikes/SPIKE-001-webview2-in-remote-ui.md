@@ -8,13 +8,13 @@ Can a `WebView2` WPF control be hosted inside a VS.Extensibility (OOP) Remote UI
 
 ## Finding
 
-**Yes — with one constraint and one architectural adaptation.**
+**Partial — bridge confirmed, WebView2-in-XAML refuted.**
 
-1. **WebView2 in Remote UI XAML** works because Remote UI XAML is rendered inside `devenv.exe`, which loads `Microsoft.Web.WebView2.Wpf.dll` for its own features (Copilot, browser windows, etc.).  The XAML `xmlns:wv2` namespace resolves at runtime in that process.  Our extension project does **not** need its own NuGet reference — the type is resolved from the VS process.
+1. **WebView2 in Remote UI XAML does NOT work.**  At runtime, `devenv.exe` does not have `Microsoft.Web.WebView2.Wpf.dll` in its assembly search path.  VS uses WebView2 internally via the native COM/WinRT layer, *not* via the managed WPF wrapper.  Remote UI's XAML parser silently skips the unresolvable `wv2:WebView2` element; standard WPF controls in the same DataTemplate (e.g., `Grid`, `Border`, `TextBlock`) render normally.  This was verified by the diagnostic status bar: the pure-Remote-UI footer appeared correctly while the `wv2:WebView2` row above it remained blank.
 
-2. **Two-way bridge via CoreWebView2.WebMessageReceived is not possible** from an OOP extension.  Remote UI has no code-behind, so there is no place in the extension host process to attach .NET event handlers to the `WebView2` instance that lives in `devenv.exe`.
+2. **Two-way bridge via local WebSocket is confirmed working.**  The `ConduitWebSocketBridge` `HttpListener` serves the chat HTML and accepts WebSocket connections.  Verified end-to-end in a browser: page loads, `onopen` fires, echo round-trip completes.
 
-3. **Solution: local WebSocket server (`ConduitWebSocketBridge`).**  The OOP extension starts an `HttpListener` on a random loopback port.  The chat page's JavaScript connects to `ws://localhost:<port>/ws`.  This gives full-duplex, low-latency comms between the webview (running in devenv) and the extension host — without touching devenv's address space.
+3. **Consequence: WebView2 must be hosted in-process by `ClaudeCode.VsBridge`.**  A VSSDK in-proc component running inside `devenv.exe` can create a `WebView2` WPF control directly, point it at `ConduitWebSocketBridge`'s URL, and embed the result in a `ToolWindowPane`.  See **SPIKE-101**.
 
 ## Evidence
 
@@ -49,8 +49,10 @@ VS 2026 loads `Microsoft.Web.WebView2.Wpf.dll` because Copilot Chat uses it.  Th
 
 | | Value |
 |---|---|
-| WebView2 in Remote UI XAML | **Yes** — reference `Microsoft.Web.WebView2.Wpf` from VS process; no NuGet in extension project |
-| Bridge mechanism | **Local WebSocket** (`ConduitWebSocketBridge` on `http://localhost:<dynamic-port>/`) |
+| WebView2 in Remote UI XAML | **No** — `Microsoft.Web.WebView2.Wpf.dll` is not in devenv's assembly path; element silently skipped |
+| WebView2 host | **`ClaudeCode.VsBridge`** — VSSDK in-proc `ToolWindowPane` running inside devenv |
+| Bridge mechanism | **Local WebSocket** (`ConduitWebSocketBridge` on `http://localhost:<dynamic-port>/`) — confirmed working |
+| Bridge → VsBridge URL handoff | Port written to `%TEMP%\conduit-bridge.port` by OOP; read by VsBridge on init |
 | JS ↔ extension direction | JS: `ws.send(JSON.stringify({type,text}))` → extension: `MessageReceived` event |
 | Extension → JS direction | `bridge.BroadcastAsync(json)` pushes to all connected sockets |
 | Phase 1 inline HTML | Inline string in `ConduitWebSocketBridge` — replaced by Vite bundle when SPIKE-002 closes |
@@ -66,10 +68,11 @@ VS 2026 loads `Microsoft.Web.WebView2.Wpf.dll` because Copilot Chat uses it.  Th
 
 ## Implications for the plan
 
-1. **SPIKE-001 closed** — Phase 1 (`ClaudeCode.VSExtension.UI` shell) can proceed.
-2. **SPIKE-002 (CSP + assets)** is the next gate: replace `ConduitWebSocketBridge.ChatHtml` with a Vite bundle served via `SetVirtualHostNameToFolderMapping` or a local static file server.
-3. **No `VsBridge` component needed for Phase 1** — the WebSocket pattern sidesteps every in-proc API that would have required it.  `VsBridge` remains available for Phase 4 (inline diff adornments) and Phase 3 (terminal handoff).
-4. **Phase 1 `ConduitWebSocketBridge` is the seed for `ICliHost`** (Phase 2): replace the echo handler with NDJSON framing to/from the Claude CLI process.
+1. **SPIKE-001 closed** — bridge mechanism confirmed; WebView2-in-XAML refuted.
+2. **SPIKE-101 opened** — `ClaudeCode.VsBridge` must host the `WebView2` `ToolWindowPane` in devenv.  See `docs/spikes/SPIKE-101-vssdk-bridge.md`.
+3. **SPIKE-002 (CSP + assets)** moves to after SPIKE-101 — the Vite bundle will be served by `ConduitWebSocketBridge` and loaded by VsBridge's WebView2.
+4. **`VsBridge` is now a Phase 1 dependency**, not a Phase 4 optional component.
+5. **Phase 1 `ConduitWebSocketBridge` is the seed for `ICliHost`** (Phase 2): replace the echo handler with NDJSON framing to/from the Claude CLI process.
 
 ## Runtime exit criterion
 
