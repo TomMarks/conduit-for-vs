@@ -261,10 +261,10 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
   - **SPIKE-004-resume**: ⏳ **open** — `--resume` is wired in `CliProcessHost` and confirmed working manually; automated test not yet written. See `SPIKE-004-resume.md`.
 
 ### Phase 3 — Auth & multi-provider (2 days)
-- **Deliverable**: first-run flow detects no login, runs `claude /login` in integrated terminal; settings UI for Bedrock/Vertex/Foundry.
+- **Deliverable**: first-run flow detects no login, runs `claude /login` in external console window; settings UI for Bedrock/Vertex/Foundry.
 - **Exit**: Sign in via browser; provider selection persists.
 - **Risks / Spikes**:
-  - **SPIKE-005-terminal-handoff**: Best way to invoke the integrated terminal from OOP. May need `VsBridge`. Artifact: working command.
+  - **SPIKE-005-terminal-handoff**: ✅ **closed 2026-04-24** — no terminal API in VS.Extensibility SDK 17.14; VSCT invocation not available from OOP. Solution: `Process.Start(UseShellExecute=true)` with wt.exe → cmd.exe fallback. No VsBridge needed. See `SPIKE-005-terminal-handoff.md`.
 
 ### Phase 4 — Editor integration: @-mentions & inline diffs (4–6 days)
 - **Deliverable**: `Alt+K` inserts `@file.cs#start-end` from selection; CLI `Edit` tool calls render as inline diff cards with Accept/Reject; on accept, patch applied via editor APIs.
