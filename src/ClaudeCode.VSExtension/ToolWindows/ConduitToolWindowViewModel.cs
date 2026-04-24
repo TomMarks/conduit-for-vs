@@ -1,4 +1,6 @@
 using System.Runtime.Serialization;
+using Conduit.Cli;
+using Conduit.Cli.Events;
 using Microsoft.VisualStudio.Extensibility.UI;
 
 namespace Conduit.ToolWindows;
@@ -6,9 +8,9 @@ namespace Conduit.ToolWindows;
 /// <summary>
 /// View model for the Conduit chat tool window.
 ///
-/// Spike-002: stub send command streams a fake response to prove the WPF Remote UI
-/// update path works end-to-end.  Phase 1 replaces <see cref="ExecuteSendAsync"/>
-/// with a real ICliHost integration.
+/// Manages the chat message list and wires user input to the Claude CLI subprocess
+/// via <see cref="CliProcessHost"/>.  Session context is preserved across turns
+/// using the session ID emitted in the first <see cref="SystemInitEvent"/>.
 /// </summary>
 [DataContract]
 internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
@@ -16,6 +18,7 @@ internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
     private string inputText = string.Empty;
     private bool canSend = true;
     private string statusText = "Ready";
+    private string? sessionId;
 
     public ConduitToolWindowViewModel()
     {
@@ -67,23 +70,50 @@ internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
         var reply = new ChatMessage { IsUser = false, IsStreaming = true };
         this.Messages.Add(reply);
 
-        // Spike stub: stream a fake response word-by-word.
-        // Phase 1 replaces this with real CLI stdout consumption.
-        await StreamStubResponseAsync(reply, text, ct);
-
-        reply.IsStreaming = false;
-        this.CanSend = true;
-        this.StatusText = "Ready";
-    }
-
-    private static async Task StreamStubResponseAsync(ChatMessage reply, string userText, CancellationToken ct)
-    {
-        var words = $"[stub] You said: \"{userText}\" — Phase 1 will connect this to the Claude CLI.".Split(' ');
-        foreach (var word in words)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            reply.Text += (reply.Text.Length == 0 ? string.Empty : " ") + word;
-            await Task.Delay(60, ct);
+            await foreach (var evt in CliProcessHost.RunAsync(text, this.sessionId, ct))
+            {
+                switch (evt)
+                {
+                    case SystemInitEvent init:
+                        this.sessionId = init.SessionId;
+                        this.StatusText = $"Connected \u00b7 {init.Model}";
+                        break;
+
+                    case TextTokenEvent token:
+                        reply.Text += token.Text;
+                        break;
+
+                    case SessionCompleteEvent { IsError: true } error:
+                        reply.Text = string.IsNullOrWhiteSpace(reply.Text)
+                            ? error.ResultText
+                            : reply.Text;
+                        this.StatusText = "Error \u2014 see message above";
+                        break;
+
+                    case SessionCompleteEvent complete:
+                        this.StatusText = $"Ready \u00b7 {complete.NumTurns} turn(s) \u00b7 ${complete.CostUsd:F4}";
+                        break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            reply.Text = string.IsNullOrWhiteSpace(reply.Text)
+                ? "[cancelled]"
+                : reply.Text + " [cancelled]";
+            this.StatusText = "Cancelled";
+        }
+        catch (Exception ex)
+        {
+            reply.Text = $"Failed to start Claude CLI: {ex.Message}\n\nEnsure 'claude' is installed and on the PATH.";
+            this.StatusText = "Error \u2014 CLI not found";
+        }
+        finally
+        {
+            reply.IsStreaming = false;
+            this.CanSend = true;
         }
     }
 }

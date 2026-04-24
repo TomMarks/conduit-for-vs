@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ClaudeCode.Core\ClaudeCode.Core.csproj" />
+    <ProjectReference Include="..\ClaudeCode.Cli\ClaudeCode.Cli.csproj" />
   </ItemGroup>
 
   <ItemGroup>
