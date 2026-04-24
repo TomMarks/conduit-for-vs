@@ -8,7 +8,7 @@
 
 ## 0. TL;DR
 
-Build an out-of-process VS2026 extension that wraps the Claude Code CLI as a subprocess, surfaces a chat UI in a tool window via Remote UI + WebView2, and integrates with the editor for inline diffs, @-mentions with line ranges, plan mode, auto-accept, and MCP. Achieve parity with Anthropic's VS Code extension where the platform allows; substitute idiomatic VS patterns where it doesn't.
+Build an out-of-process VS2026 extension that wraps the Claude Code CLI as a subprocess, surfaces a chat UI in a tool window via WPF Remote UI, and integrates with the editor for inline diffs, @-mentions with line ranges, plan mode, auto-accept, and MCP. Achieve parity with Anthropic's VS Code extension where the platform allows; substitute idiomatic VS patterns where it doesn't.
 
 **Primary architectural decisions (decide before Phase 1):**
 
@@ -17,7 +17,7 @@ Build an out-of-process VS2026 extension that wraps the Claude Code CLI as a sub
 | Extensibility model | VisualStudio.Extensibility (OOP) | Hot-load, .NET 10, isolation, future-proof |
 | Fallback model | VSSDK in-proc bridge | For features not yet in OOP (e.g., advanced editor margins) |
 | TFM | `net8.0-windows10.0.22621.0` | net10 blocked by [VSExtensibility#544](https://github.com/microsoft/VSExtensibility/issues/544); revisit Q3 2026 — see `SPIKE-000-tfm.md` |
-| Chat UI | WebView2 hosted inside a Remote UI tool window | Remote UI alone can't render the chat surface at parity |
+| Chat UI | WPF Remote UI (`ItemsControl`-based chat, streaming-update MVVM) | WebView2 unavailable in devenv's assembly path (SPIKE-001); WPF controls sufficient for Phases 1–2; revisit WebView2 for Phase 9 rich rendering |
 | Claude integration | CLI subprocess + NDJSON over stdio | No official C# Agent SDK |
 | Solution format | `.slnx` | VS2026 native |
 | DI/MVVM | `Microsoft.Extensions.DependencyInjection` + `CommunityToolkit.Mvvm` | Standard, OOP-friendly |
@@ -84,13 +84,13 @@ Build an out-of-process VS2026 extension that wraps the Claude Code CLI as a sub
 ClaudeCode.VS2026.slnx
 ├── src/
 │   ├── ClaudeCode.VSExtension/                  (VSIX entry point — VisualStudio.Extensibility OOP)
-│   ├── ClaudeCode.VSExtension.UI/               (Remote UI controls + WebView2 host XAML)
-│   ├── ClaudeCode.VSExtension.Webview/          (TS/HTML/CSS chat surface, built into a single bundle)
+│   │                                            (includes WPF Remote UI XAML + ViewModels)
 │   ├── ClaudeCode.Core/                       (domain: sessions, messages, plans, tool calls)
 │   ├── ClaudeCode.Cli/                        (Claude CLI process host + NDJSON parser)
 │   ├── ClaudeCode.Mcp/                        (MCP config read/write — defers to ~/.claude/settings.json)
 │   ├── ClaudeCode.Editor/                     (editor integrations: diff apply, @-mention, code lens)
-│   └── ClaudeCode.VsBridge/                   (in-proc VSSDK bridge for any feature gaps; loaded lazily)
+│   └── ClaudeCode.VsBridge/                   (in-proc VSSDK bridge — net48; added only if OOP gaps
+│                                              require it in Phase 3+; NOT a Phase 1 dependency)
 ├── tests/
 │   ├── ClaudeCode.Core.Tests/                 (xUnit; pure unit)
 │   ├── ClaudeCode.Cli.Tests/                  (NDJSON fixtures + golden files)
@@ -108,11 +108,6 @@ flowchart LR
         EXT[ClaudeCode.VSExtension<br/>net8.0-windows<br/>VisualStudio.Extensibility]
     end
 
-    subgraph ui [UI Layer]
-        UIPROJ[ClaudeCode.VSExtension.UI<br/>Remote UI XAML + WebView2 host]
-        WEB[ClaudeCode.VSExtension.Webview<br/>HTML/TS/CSS bundle]
-    end
-
     subgraph domain [Domain & Integration]
         CORE[ClaudeCode.Core<br/>net8.0<br/>session/message/plan models]
         CLI[ClaudeCode.Cli<br/>net8.0<br/>process host + NDJSON]
@@ -124,20 +119,17 @@ flowchart LR
         VSB[ClaudeCode.VsBridge<br/>net48 or net8-windows<br/>in-proc shims]
     end
 
-    EXT --> UIPROJ
     EXT --> CORE
     EXT --> CLI
     EXT --> EDIT
     EXT --> MCP
-    EXT -.lazy load.-> VSB
-    UIPROJ --> CORE
-    UIPROJ -.embeds.-> WEB
+    EXT -.Phase 3+ only.-> VSB
     EDIT --> CORE
     CLI --> CORE
     MCP --> CORE
 ```
 
-Why `VsBridge` exists: the OOP model still has gaps (e.g., some advanced editor margins, certain commanding scenarios). When we hit one, we add a thin VSSDK in-proc shim and call it via brokered service. Keeps OOP-first while not blocking on Microsoft's roadmap.
+Why `VsBridge` exists: the OOP model still has gaps (e.g., some advanced editor margins, in-proc terminal handoff). When we hit one, we add a thin VSSDK in-proc shim (`net48`) and call it via brokered service. Keeps OOP-first while not blocking on Microsoft's roadmap. The chat UI does **not** require VsBridge — WPF Remote UI is sufficient.
 
 ---
 
@@ -155,7 +147,7 @@ flowchart TB
 
     subgraph exthost [Extension Service Hub host — separate .NET 8 process]
         EXT2[ClaudeCode.VSExtension]
-        VM[ViewModels<br/>ChatVM, SessionsVM, PlanVM]
+        VM[ViewModels<br/>ChatVM, SessionsVM, PlanVM<br/>ObservableList·AsyncCommand]
         ORCH[Session Orchestrator]
         CLIH[CLI Host]
         EDITSVC[Editor Service]
@@ -175,7 +167,7 @@ flowchart TB
     end
 
     IDE <-->|JsonRpc over named pipe| BS
-    BS <-->|Remote UI| VM
+    BS <-->|Remote UI / DataMember bindings| VM
     VM --> ORCH
     ORCH --> CLIH
     CLIH <-->|stdio NDJSON| CC
@@ -193,8 +185,8 @@ flowchart TB
 | `ClaudeCode.VSExtension` | DI composition root, registers commands, tool window, contributions | One `Extension` class with `[VisualStudioContribution]` attributes |
 | `Session Orchestrator` | Owns N concurrent `ClaudeSession` instances; routes events to UI | One CLI process per session; preserve `session_id` on resume |
 | `CLI Host` | Spawn `claude`, write input frames, parse `stream-json` line-by-line | Use `System.IO.Pipelines` for backpressure; `System.Text.Json` source generators for hot path |
-| `Chat ViewModel` | Streamed message blocks → observable collection bound to webview via `postMessage` | `CommunityToolkit.Mvvm` source generators |
-| `WebView2 host` | Single Remote UI XAML hosting `WebView2`; bridges via `CoreWebView2.WebMessageReceived` | Static assets shipped with the extension; CSP locked down |
+| `Chat ViewModel` | Streamed tokens → `ObservableList<ChatMessage>`; `ChatMessage.Text` grown in-place per token; bound to Remote UI `ItemsControl` via `[DataMember]` | `NotifyPropertyChangedObject` + `AsyncCommand` from VS.Extensibility SDK |
+| `Chat View` | Remote UI `DataTemplate`: `ItemsControl` with `DataTrigger`-driven bubbles, status bar, input/send bar | Standard WPF only — no custom types, no WebView2; see SPIKE-002 |
 | `Editor Service` | Apply edits as inline diffs (accept/reject), resolve `@file:start-end` mentions, optional code lens | Uses VS.Extensibility editor APIs; falls back to `VsBridge` if needed |
 | `MCP` | Read/write user MCP server list in `~/.claude/settings.json`, surface as settings UI | Don't reimplement MCP — defer to CLI |
 | `VsBridge` | In-proc shims for any OOP gap | Loaded only when invoked |
@@ -205,28 +197,28 @@ flowchart TB
 sequenceDiagram
     autonumber
     participant U as User
-    participant W as WebView2 (chat)
+    participant V as Chat View (WPF Remote UI)
     participant VM as ChatVM
     participant ORCH as Orchestrator
     participant CLI as Claude CLI
     participant ED as Editor Service
     participant FS as Workspace
 
-    U->>W: types prompt + @file.cs#10-30
-    W->>VM: postMessage(send)
+    U->>V: types prompt + @file.cs#10-30, presses Enter
+    V->>VM: SendCommand (InputText binding)
     VM->>ORCH: SendAsync(prompt, sessionId)
     ORCH->>CLI: write NDJSON {type:user_message, ...}
     loop streamed events
         CLI-->>ORCH: stream-json line (system/assistant/tool_use/tool_result)
         ORCH-->>VM: typed event
-        VM-->>W: postMessage(append)
+        VM-->>V: ChatMessage.Text += token ([DataMember] update)
     end
     CLI-->>ORCH: tool_use{name:Edit, inputs:{file, patch}}
     ORCH->>ED: PreviewEdit(file, patch)
     ED->>VM: pendingEdit
-    VM->>W: render inline diff card
-    U->>W: Accept
-    W->>VM: postMessage(accept)
+    VM-->>V: diff card ChatMessage appended
+    U->>V: Accept
+    V->>VM: AcceptCommand
     VM->>ORCH: ApproveTool(toolUseId)
     ORCH->>CLI: write NDJSON {type:tool_result, approved:true}
     ED->>FS: apply patch
@@ -253,18 +245,19 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
   - **SPIKE-000-tfm**: ✅ **closed 2026-04-22** — see `SPIKE-000-tfm.md`. TFM pinned to `net8.0-windows10.0.22621.0`, net10 forward-declared in metadata. Bump triggered by [VSExtensibility#544](https://github.com/microsoft/VSExtensibility/issues/544) closing or .NET 8 LTS sunset (Nov 2026).
   - **SPIKE-100-runtime-bump**: scheduled for Q3 2026 regardless of #544 status — .NET 8 LTS ends in Nov.
 
-### Phase 1 — Chat UI shell (3–5 days)
-- **Deliverable**: WebView2 inside Remote UI tool window, two-way `postMessage` bridge, dummy "echo" backend.
-- **Exit**: Type in webview, message appears in `Output → Claude Code` window via the bridge.
+### Phase 1 — Chat UI shell (3–5 days) ✅ closed 2026-04-23
+- **Deliverable**: WPF Remote UI chat with streaming stub — `ItemsControl`-based message list, user/assistant bubbles, status bar, input+send bar.
+- **Exit**: Type in tool window → user bubble appears right-aligned; assistant stub response streams word-by-word left-aligned; Send gates correctly during streaming.  ✅ All 6 exit criteria passed.
 - **Risks / Spikes**:
-  - **SPIKE-001-webview2-in-remote-ui**: Prove WebView2 works inside a Remote UI tool window in OOP (Microsoft Q&A says yes; verify on current SDK). Artifact: minimal sample VSIX.
-  - **SPIKE-002-csp-and-assets**: How are static assets resolved (`SetVirtualHostNameToFolderMapping` works OOP?). Artifact: documented asset-loading approach.
+  - **SPIKE-001-webview2-in-remote-ui**: ✅ **closed 2026-04-23** — WebView2 cannot render in Remote UI XAML (`Microsoft.Web.WebView2.Wpf.dll` not in devenv's assembly path). See `SPIKE-001-webview2-in-remote-ui.md`.
+  - **SPIKE-101-vssdk-bridge**: ✅ **abandoned 2026-04-23** — VSSDK in-proc VsBridge requires `net48`; ruled out. See `SPIKE-101-vssdk-bridge.md`.
+  - **SPIKE-002-wpf-remote-ui-chat**: ✅ **closed 2026-04-23** — WPF Remote UI sufficient for Phases 1–2. No WebView2, no bridge, no secondary package. See `SPIKE-002-wpf-remote-ui-chat.md`.
 
 ### Phase 2 — CLI integration (3–4 days)
-- **Deliverable**: spawn `claude -p --input-format stream-json --output-format stream-json --include-partial-messages --verbose`, stream both directions, render assistant text live in webview.
-- **Exit**: Plain prompt → streamed Markdown response in chat.
+- **Deliverable**: replace `StreamStubResponseAsync` in `ConduitToolWindowViewModel` with real Claude CLI subprocess; stream `--output-format stream-json` events; render assistant text live in the WPF chat view.
+- **Exit**: Plain prompt → streamed Markdown response appears token-by-token in the tool window.
 - **Risks / Spikes**:
-  - **SPIKE-003-cli-stream-json**: Pin the JSON event schema; capture golden-file fixtures of every event type. Artifact: `tests/fixtures/*.ndjson` + parser.
+  - **SPIKE-003-cli-stream-json**: Pin the JSON event schema; capture golden-file fixtures of every event type. Artifact: `tests/fixtures/*.ndjson` + parser in `ClaudeCode.Cli`.
   - **SPIKE-004-resume**: Verify `--resume <session_id>` round-trips full context. Artifact: 20-line test.
 
 ### Phase 3 — Auth & multi-provider (2 days)
@@ -332,7 +325,7 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
 | `/plugins` UI | Render CLI's plugin output; basic install/toggle | Partial |
 | Status bar Claude Code | VS.Extensibility status bar API | Direct |
 | Extended thinking toggle | UI toggle → CLI flag / runtime command | Direct |
-| Image paste / file attach | WebView2 paste handler → CLI image input | Direct |
+| Image paste / file attach | Phase 9: WPF drag-drop / clipboard → CLI image input; or WebView2 if adopted then | Deferred |
 
 ---
 
@@ -341,7 +334,7 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
 1. **Mads's "Extensibility Essentials 2022" is VSSDK-era.** Its templates are in-proc. Use Microsoft's `Microsoft.VisualStudio.Extensibility.Templates` for the OOP main project. Keep Mads's pack installed for VSSDK side-projects (it remains the best DX for the in-proc bridge).
 2. **Branding resolved** — own brand "Conduit" (see `BRAND.md`). Marketplace title "Conduit for Claude Code" makes the integration explicit without using Anthropic marks. Distinct icon (signal waveform) and palette (teal/rose on deep slate) avoid visual confusion with Anthropic's own VS Code extension.
 3. **No first-party C# Agent SDK.** Wrapping the CLI is the only realistic path right now. If Anthropic ships one (watch the releases feed), we wrap or replace `ClaudeCode.Cli` with no other layer changes.
-4. **Remote UI is not WPF.** Single-XAML, no code-behind, no custom controls referenced. WebView2 is the parity-grade chat surface — plan for it from day one, not as a retrofit.
+4. **Remote UI constraints.** Single-XAML, no code-behind, no custom controls from the extension assembly. However, standard WPF controls (`ItemsControl`, `DataTemplate`, `DataTrigger`, `TextBox`, `Button`) are fully available and sufficient for the chat UI (SPIKE-002). WebView2 is deferred to Phase 9 if rich rendering is needed.
 5. **Hot-load is a feature, not a bonus.** Avoid static singletons that capture VS process state; assume the extension can be enabled/disabled mid-session without a restart.
 6. **`.NET 10` vs `.NET 8`.** ✅ resolved — `SPIKE-000-tfm.md`. SDK pins us to .NET 8 today; .NET 8 LTS sunsets Nov 2026, so `SPIKE-100-runtime-bump` is calendared, not contingent.
 7. **Session storage lives outside the extension.** `~/.claude` is the source of truth (sessions, settings, MCP). The extension is a view layer over it — do not duplicate state.
@@ -361,6 +354,6 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
 ## Appendix B — Open questions to close in Phase 0
 
 - [x] ~~Confirm `net10.0` TFM availability in current VS.Extensibility SDK.~~ → blocked, see SPIKE-000.
-- [ ] Confirm `WebView2` works in OOP Remote UI tool window on current VS2026 build → SPIKE-001.
+- [x] ~~Confirm `WebView2` works in OOP Remote UI tool window.~~ → does NOT work; WPF Remote UI adopted instead, see SPIKE-001 + SPIKE-002.
 - [ ] Confirm process for invoking integrated terminal from OOP extension → SPIKE-005.
 - [x] ~~Branding/legal go-no-go on name + icon.~~ → resolved: own brand "Conduit", see `BRAND.md`.
