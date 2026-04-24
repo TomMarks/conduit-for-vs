@@ -40,6 +40,7 @@ internal sealed class ConduitToolWindowContent : RemoteUserControl
         // Update the binding; devenv proxy picks up the INotifyPropertyChanged notification
         // and the WebView2 navigates to the chat page.
         this.viewModel.WebViewSource = this.bridge.SourceUrl;
+        this.viewModel.DiagnosticText = $"Bridge ready · {this.bridge.SourceUrl} · open in browser to test";
     }
 
     /// <inheritdoc />
