@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- CLI host + NDJSON parser — pure .NET, no Windows surface needed. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Conduit.Cli</RootNamespace>
+    <AssemblyName>Conduit.Cli</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaudeCode.Core\ClaudeCode.Core.csproj" />
+  </ItemGroup>
+
+</Project>

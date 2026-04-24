@@ -1,7 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/ClaudeCode.Core/ClaudeCode.Core.csproj" />
+    <Project Path="src/ClaudeCode.Cli/ClaudeCode.Cli.csproj" />
     <Project Path="src/ClaudeCode.VSExtension/ClaudeCode.VSExtension.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClaudeCode.Cli.Tests/ClaudeCode.Cli.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
