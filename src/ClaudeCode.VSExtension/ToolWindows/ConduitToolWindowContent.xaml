@@ -4,18 +4,29 @@
 
   <!--
     SPIKE-001: WebView2 inside a Remote UI tool window.
-
-    Remote UI XAML runs in devenv.exe, so it can reference any assembly that devenv loads.
-    VS 2026 loads Microsoft.Web.WebView2.Wpf.dll for Copilot; we piggyback on that.
-
-    Source is a string→Uri binding — WPF's UriTypeConverter handles the conversion.
-    The value is "about:blank" until ControlLoadedAsync starts the WebSocket bridge
-    and pushes the real URL via INotifyPropertyChanged.
-
-    Two-way comms go through ConduitWebSocketBridge (ws://localhost:<port>/ws) because
-    Remote UI has no code-behind and CoreWebView2.WebMessageReceived is unreachable.
+    See docs/spikes/SPIKE-001-webview2-in-remote-ui.md.
   -->
 
-  <wv2:WebView2 Source="{Binding WebViewSource}" />
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+
+      <!-- SPIKE-001 DIAGNOSTIC ROW — delete this RowDefinition + the Border below before Phase 1 ships -->
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <wv2:WebView2 Source="{Binding WebViewSource}" Grid.Row="0" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SPIKE-001 DIAGNOSTIC BAR — remove this entire Border before Phase 1 ships.
+         Purpose: proves the ViewModel and bridge are wiring up even if WebView2
+         is blank.  If DiagnosticText shows the localhost URL, the bridge is live;
+         paste that URL into a browser to verify the chat page loads.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <Border Grid.Row="1" Background="#161b22" BorderBrush="#30363d" BorderThickness="0,1,0,0" Padding="8,4">
+      <TextBlock Text="{Binding DiagnosticText}" Foreground="#6E7681" FontSize="11" FontFamily="Consolas" />
+    </Border>
+
+  </Grid>
 
 </DataTemplate>

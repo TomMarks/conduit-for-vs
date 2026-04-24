@@ -12,16 +12,24 @@ namespace Conduit.ToolWindows;
 internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
 {
     private string webViewSource = "about:blank";
+    private string diagnosticText = "Bridge: starting…";
 
-    /// <summary>
-    /// URL navigated by the WebView2 control.  Starts as about:blank and is updated to
-    /// the bridge's HTTP origin once <see cref="ConduitToolWindowContent.ControlLoadedAsync"/>
-    /// starts the <see cref="Conduit.Bridge.ConduitWebSocketBridge"/>.
-    /// </summary>
     [DataMember]
     public string WebViewSource
     {
         get => this.webViewSource;
         set => this.SetProperty(ref this.webViewSource, value);
+    }
+
+    /// <summary>
+    /// SPIKE-001 diagnostic — remove this property (and its binding in XAML) before Phase 1 ships.
+    /// Shows bridge URL once the server is ready so the window being blank can be distinguished
+    /// from the bridge not starting vs. WebView2 not rendering.
+    /// </summary>
+    [DataMember]
+    public string DiagnosticText
+    {
+        get => this.diagnosticText;
+        set => this.SetProperty(ref this.diagnosticText, value);
     }
 }
