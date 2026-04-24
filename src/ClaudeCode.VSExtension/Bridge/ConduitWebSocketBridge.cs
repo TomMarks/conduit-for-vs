@@ -50,9 +50,12 @@ internal sealed class ConduitWebSocketBridge : IDisposable
             <button onclick="send()">Send</button>
           </div>
           <script>
+            append('ext', 'Connecting to bridge at ws://' + location.host + '/ws \u2026');
             const ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen    = () => append('ext', '\u2705 WebSocket connected \u2014 type a message below and press Send');
+            ws.onclose   = () => append('ext', '\u26A0 WebSocket closed');
+            ws.onerror   = () => append('ext', '\u274C WebSocket error \u2014 check the extension host is running');
             ws.onmessage = e => append('ext', JSON.parse(e.data).text ?? '');
-            ws.onerror   = () => append('ext', '\u26A0 WebSocket error');
             function append(cls, text) {
               const d = document.createElement('div');
               d.className = 'msg ' + cls;
