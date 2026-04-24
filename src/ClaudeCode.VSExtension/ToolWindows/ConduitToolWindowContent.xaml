@@ -2,14 +2,19 @@
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    Spike-002: WPF chat UI in Remote UI.
-    No WebView2, no bridge — just standard WPF controls bound to ConduitToolWindowViewModel.
-    Phase 1 replaces ExecuteSendAsync stub with real Claude CLI integration.
+    Phase 3.1: added sign-in banner (Row 1) that surfaces when ShowSignIn=True.
+    BooleanToVisibilityConverter collapses/shows the banner; SignInCommand launches
+    claude /login in an external console window via ClaudeAuthLauncher.
   -->
+
+  <DataTemplate.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVis" />
+  </DataTemplate.Resources>
 
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
@@ -70,8 +75,39 @@
       </ItemsControl>
     </ScrollViewer>
 
-    <!-- ── Status bar ─────────────────────────────────────────────────── -->
+    <!-- ── Sign-in banner (hidden unless ShowSignIn=True) ────────────── -->
     <Border Grid.Row="1"
+            Visibility="{Binding ShowSignIn, Converter={StaticResource BoolToVis}}"
+            Background="#2d2208"
+            BorderBrush="#9e6a03"
+            BorderThickness="0,1,0,1"
+            Padding="10,8">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Column="0"
+                   Text="Not signed in to Claude."
+                   Foreground="#d29922"
+                   FontSize="12"
+                   VerticalAlignment="Center" />
+
+        <Button Grid.Column="1"
+                Command="{Binding SignInCommand}"
+                Content="Sign In"
+                Padding="12,5"
+                FontSize="12"
+                FontWeight="SemiBold"
+                Background="#9e6a03"
+                Foreground="#ffffff"
+                BorderThickness="0" />
+      </Grid>
+    </Border>
+
+    <!-- ── Status bar ─────────────────────────────────────────────────── -->
+    <Border Grid.Row="2"
             Background="#161b22"
             BorderBrush="#30363d"
             BorderThickness="0,1,0,0"
@@ -83,7 +119,7 @@
     </Border>
 
     <!-- ── Input bar ──────────────────────────────────────────────────── -->
-    <Border Grid.Row="2"
+    <Border Grid.Row="3"
             Background="#0d1117"
             BorderBrush="#30363d"
             BorderThickness="0,1,0,0"
