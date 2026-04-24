@@ -253,12 +253,12 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
   - **SPIKE-101-vssdk-bridge**: ✅ **abandoned 2026-04-23** — VSSDK in-proc VsBridge requires `net48`; ruled out. See `SPIKE-101-vssdk-bridge.md`.
   - **SPIKE-002-wpf-remote-ui-chat**: ✅ **closed 2026-04-23** — WPF Remote UI sufficient for Phases 1–2. No WebView2, no bridge, no secondary package. See `SPIKE-002-wpf-remote-ui-chat.md`.
 
-### Phase 2 — CLI integration (3–4 days)
+### Phase 2 — CLI integration (3–4 days) ✅ closed 2026-04-24
 - **Deliverable**: replace `StreamStubResponseAsync` in `ConduitToolWindowViewModel` with real Claude CLI subprocess; stream `--output-format stream-json` events; render assistant text live in the WPF chat view.
-- **Exit**: Plain prompt → streamed Markdown response appears token-by-token in the tool window.
+- **Exit**: Plain prompt → streamed Markdown response appears token-by-token in the tool window.  ✅ Confirmed working 2026-04-24.
 - **Risks / Spikes**:
-  - **SPIKE-003-cli-stream-json**: Pin the JSON event schema; capture golden-file fixtures of every event type. Artifact: `tests/fixtures/*.ndjson` + parser in `ClaudeCode.Cli`.
-  - **SPIKE-004-resume**: Verify `--resume <session_id>` round-trips full context. Artifact: 20-line test.
+  - **SPIKE-003-cli-stream-json**: ✅ **closed 2026-04-24** — schema pinned, golden-file fixtures captured, 12 tests green. See `SPIKE-003-cli-stream-json.md`.
+  - **SPIKE-004-resume**: ⏳ **open** — `--resume` is wired in `CliProcessHost` and confirmed working manually; automated test not yet written. See `SPIKE-004-resume.md`.
 
 ### Phase 3 — Auth & multi-provider (2 days)
 - **Deliverable**: first-run flow detects no login, runs `claude /login` in integrated terminal; settings UI for Bedrock/Vertex/Foundry.
