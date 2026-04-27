@@ -1,3 +1,11 @@
 {
-  "Conduit.OpenConduit.DisplayName": "Conduit: Open chat window"
+  "Conduit.OpenConduit.DisplayName": "Conduit: Open chat window",
+
+  "Conduit.Settings.Category": "Conduit",
+  "Conduit.Settings.Provider": "Provider",
+  "Conduit.Settings.Provider.Description": "The Claude API provider used for all chat requests.",
+  "Conduit.Settings.Provider.Anthropic": "Anthropic (default)",
+  "Conduit.Settings.Provider.Bedrock": "AWS Bedrock",
+  "Conduit.Settings.Provider.Vertex": "Google Vertex AI",
+  "Conduit.Settings.Provider.Azure": "Azure"
 }

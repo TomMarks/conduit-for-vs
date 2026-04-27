@@ -1,6 +1,10 @@
+#pragma warning disable VSEXTPREVIEW_SETTINGS  // Settings API is preview in SDK 17.14
+
 using System.Runtime.Serialization;
 using Conduit.Cli;
 using Conduit.Cli.Events;
+using Conduit.Settings;
+using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.UI;
 
 namespace Conduit.ToolWindows;
@@ -16,18 +20,24 @@ namespace Conduit.ToolWindows;
 /// message) are surfaced as an inline sign-in banner rather than a raw error string.
 /// <see cref="SignInCommand"/> opens a console window running <c>claude /login</c>
 /// via <see cref="ClaudeAuthLauncher"/>.
+///
+/// The active provider is read from <see cref="ConduitSettings.Provider"/> on every
+/// send so that changes made in Tools &gt; Options take effect without restarting VS.
 /// </summary>
 [DataContract]
 internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
 {
+    private readonly VisualStudioExtensibility extensibility;
+
     private string inputText = string.Empty;
     private bool canSend = true;
     private string statusText = "Ready";
     private bool showSignIn;
     private string? sessionId;
 
-    public ConduitToolWindowViewModel()
+    public ConduitToolWindowViewModel(VisualStudioExtensibility extensibility)
     {
+        this.extensibility = extensibility;
         this.Messages = [];
         this.SendCommand = new AsyncCommand(this.ExecuteSendAsync);
         this.SignInCommand = new AsyncCommand(this.ExecuteSignInAsync);
@@ -114,7 +124,13 @@ internal sealed class ConduitToolWindowViewModel : NotifyPropertyChangedObject
 
         try
         {
-            await foreach (var evt in CliProcessHost.RunAsync(text, this.sessionId, ct))
+            // Read the provider setting on every send so Tools > Options changes
+            // take effect without restarting Visual Studio.
+            var providerResult = await this.extensibility.Settings()
+                .ReadEffectiveValueAsync(ConduitSettings.Provider, ct);
+            var providerConfig = ProviderConfig.FromSettingValue(providerResult.ValueOrDefault("anthropic"));
+
+            await foreach (var evt in CliProcessHost.RunAsync(text, this.sessionId, providerConfig, ct))
             {
                 switch (evt)
                 {
