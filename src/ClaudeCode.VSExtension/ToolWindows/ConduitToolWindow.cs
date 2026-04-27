@@ -5,15 +5,20 @@ using Microsoft.VisualStudio.RpcContracts.RemoteUI;
 namespace Conduit.ToolWindows;
 
 /// <summary>
-/// Conduit's primary chat surface — Phase 0 shows a static greeting; Phase 1 embeds WebView2.
+/// Conduit's primary chat surface.
 /// </summary>
 [VisualStudioContribution]
 internal sealed class ConduitToolWindow : ToolWindow
 {
-    private readonly ConduitToolWindowContent content = new();
+    private readonly VisualStudioExtensibility extensibility;
 
-    public ConduitToolWindow()
+    // Content is created lazily in GetContentAsync so that this.extensibility
+    // is fully initialised (DI complete) before it is passed down the chain.
+    private ConduitToolWindowContent? content;
+
+    public ConduitToolWindow(VisualStudioExtensibility extensibility)
     {
+        this.extensibility = extensibility;
         this.Title = "Conduit";
     }
 
@@ -28,14 +33,17 @@ internal sealed class ConduitToolWindow : ToolWindow
 
     /// <inheritdoc />
     public override Task<IRemoteUserControl> GetContentAsync(CancellationToken cancellationToken)
-        => Task.FromResult<IRemoteUserControl>(this.content);
+    {
+        this.content ??= new ConduitToolWindowContent(this.extensibility);
+        return Task.FromResult<IRemoteUserControl>(this.content);
+    }
 
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            this.content.Dispose();
+            this.content?.Dispose();
         }
 
         base.Dispose(disposing);

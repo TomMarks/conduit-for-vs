@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.UI;
 
 namespace Conduit.ToolWindows;
@@ -9,8 +10,8 @@ namespace Conduit.ToolWindows;
 /// </summary>
 internal sealed class ConduitToolWindowContent : RemoteUserControl
 {
-    public ConduitToolWindowContent()
-        : base(dataContext: new ConduitToolWindowViewModel())
+    public ConduitToolWindowContent(VisualStudioExtensibility extensibility)
+        : base(dataContext: new ConduitToolWindowViewModel(extensibility))
     {
     }
 }

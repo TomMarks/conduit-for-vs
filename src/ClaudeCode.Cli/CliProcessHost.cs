@@ -23,6 +23,11 @@ public static class CliProcessHost
     /// Session ID from a prior <see cref="SystemInitEvent"/>.
     /// Pass <see langword="null"/> to start a fresh session.
     /// </param>
+    /// <param name="providerConfig">
+    /// Provider configuration that injects the environment variables required by
+    /// the selected API provider (e.g. <c>CLAUDE_CODE_USE_BEDROCK=1</c>).
+    /// Pass <see langword="null"/> to use the Anthropic default with no extra env vars.
+    /// </param>
     /// <param name="ct">
     /// Cancellation kills the subprocess immediately (best-effort, entire process tree).
     /// </param>
@@ -32,6 +37,7 @@ public static class CliProcessHost
     public static async IAsyncEnumerable<CliEvent> RunAsync(
         string prompt,
         string? sessionId = null,
+        ProviderConfig? providerConfig = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         var psi = new ProcessStartInfo("claude")
@@ -41,6 +47,16 @@ public static class CliProcessHost
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+
+        // Inject provider-specific environment variables (e.g. CLAUDE_CODE_USE_BEDROCK=1).
+        // These overlay the parent process environment without replacing it.
+        if (providerConfig is not null)
+        {
+            foreach (var (key, value) in providerConfig.ExtraEnvironment)
+            {
+                psi.Environment[key] = value;
+            }
+        }
 
         psi.ArgumentList.Add("-p");
         psi.ArgumentList.Add(prompt);
