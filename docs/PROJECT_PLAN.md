@@ -260,18 +260,19 @@ Every phase has: **deliverable**, **exit criteria**, and a **spike artifact** fo
   - **SPIKE-003-cli-stream-json**: ✅ **closed 2026-04-24** — schema pinned, golden-file fixtures captured, 12 tests green. See `SPIKE-003-cli-stream-json.md`.
   - **SPIKE-004-resume**: ⏳ **open** — `--resume` is wired in `CliProcessHost` and confirmed working manually; automated test not yet written. See `SPIKE-004-resume.md`.
 
-### Phase 3 — Auth & multi-provider (2 days)
+### Phase 3 — Auth & multi-provider (2 days) ✅ closed 2026-04-27
 - **Deliverable**: first-run flow detects no login, runs `claude /login` in external console window; settings UI for Bedrock/Vertex/Foundry.
-- **Exit**: Sign in via browser; provider selection persists.
+- **Exit**: Sign in via browser; provider selection persists.  ✅ Confirmed working 2026-04-27.
 - **Risks / Spikes**:
   - **SPIKE-005-terminal-handoff**: ✅ **closed 2026-04-24** — no terminal API in VS.Extensibility SDK 17.14; VSCT invocation not available from OOP. Solution: `Process.Start(UseShellExecute=true)` with wt.exe → cmd.exe fallback. No VsBridge needed. See `SPIKE-005-terminal-handoff.md`.
 
 ### Phase 4 — Editor integration: @-mentions & inline diffs (4–6 days)
-- **Deliverable**: `Alt+K` inserts `@file.cs#start-end` from selection; CLI `Edit` tool calls render as inline diff cards with Accept/Reject; on accept, patch applied via editor APIs.
-- **Exit**: Ask Claude to rename a method; see diff in chat **and** as a peek-style view in editor; accept applies it.
+- **Deliverable**: `@` in chat input triggers file picker (Project Query API); CLI `Edit` tool calls render as unified diff bubbles in chat with Accept/Reject; on Accept, edit applied via `EditorExtensibility.EditAsync()`.
+- **Exit**: Ask Claude to rename a method; see unified diff in chat; Accept applies the change to the file.
+- **Note**: Inline editor adornments not available in OOP SDK (SPIKE-006). Diff UI is in the chat panel; editor receives a line-classification highlight only.
 - **Risks / Spikes**:
-  - **SPIKE-006-inline-diff-rendering**: Can VS.Extensibility editor APIs render an inline diff adornment, or do we need `VsBridge`? Artifact: prototype + decision memo.
-  - **SPIKE-007-mention-resolver**: How to enumerate workspace files efficiently in OOP for `@`-autocomplete. Artifact: file-index service.
+  - **SPIKE-006-inline-diff-rendering**: ✅ **closed 2026-04-27** — inline adornments not available in OOP. Diff in chat panel + `EditAsync()` for Accept. No VsBridge needed. See `SPIKE-006-inline-diff-rendering.md`.
+  - **SPIKE-007-mention-resolver**: ✅ **closed 2026-04-27** — `WorkspacesExtensibility.QueryProjectsAsync()` enumerates solution files in OOP. File index + `@` popup approach specified. See `SPIKE-007-mention-resolver.md`.
 
 ### Phase 5 — Plan mode & permissions (3 days)
 - **Deliverable**: mode toggle (Default / Plan / Auto-Accept), maps to CLI flags / runtime mode switch; render `exit_plan_mode` plans with Edit + Approve.
